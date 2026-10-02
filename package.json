@@ -1,0 +1,16 @@
+{
+  "name": "arrakis",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build",
+    "db:migrate": "pnpm --filter @arrakis/db migrate",
+    "db:new": "pnpm --filter @arrakis/db new"
+  }
+}

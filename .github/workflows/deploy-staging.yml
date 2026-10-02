@@ -1,0 +1,98 @@
+name: Deploy staging
+
+# Runs after CI passes on main. Authenticates with workload identity federation (no JSON
+# keys). Skips with a notice until the repository variables in docs/DEPLOY.md are set.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: asia-south1
+  PROJECT: ${{ vars.GCP_PROJECT_ID }}
+  REGISTRY: asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_AR_REPO }}
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check configuration
+        id: cfg
+        env:
+          REQUIRED: >-
+            ${{ vars.GCP_PROJECT_ID }}|${{ vars.GCP_WIF_PROVIDER }}|${{ vars.GCP_DEPLOY_SA }}|${{ vars.GCP_RUNTIME_SA }}|${{ vars.GCP_AR_REPO }}|${{ vars.GCP_CLOUDSQL_INSTANCE }}
+        run: |
+          if [[ "$REQUIRED" == *"||"* || "$REQUIRED" == "|"* || "$REQUIRED" == *"|" ]]; then
+            echo "::notice::Staging deploy skipped: GCP repository variables are not set yet (see docs/DEPLOY.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.cfg.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - if: steps.cfg.outputs.ready == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - if: steps.cfg.outputs.ready == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push images
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -f apps/web/Dockerfile -t "$REGISTRY/web:$SHA" .
+          docker build -t "$REGISTRY/rera-pipeline:$SHA" services/rera-pipeline
+          docker build -t "$REGISTRY/db-migrate:$SHA" packages/db
+          docker push "$REGISTRY/web:$SHA"
+          docker push "$REGISTRY/rera-pipeline:$SHA"
+          docker push "$REGISTRY/db-migrate:$SHA"
+
+      - name: Migrate database
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          gcloud run jobs deploy db-migrate --quiet --region "$REGION" \
+            --image "$REGISTRY/db-migrate:$SHA" \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
+            --set-cloudsql-instances "${{ vars.GCP_CLOUDSQL_INSTANCE }}" \
+            --set-secrets DATABASE_URL=MIGRATE_DATABASE_URL:latest \
+            --max-retries 0 --task-timeout 10m
+          gcloud run jobs execute db-migrate --region "$REGION" --wait
+
+      - name: Deploy web
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          gcloud run deploy web --quiet --region "$REGION" \
+            --image "$REGISTRY/web:$SHA" \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
+            --set-cloudsql-instances "${{ vars.GCP_CLOUDSQL_INSTANCE }}" \
+            --set-secrets DATABASE_URL=DATABASE_URL:latest \
+            --port 8080 --allow-unauthenticated
+
+      - name: Deploy pipeline job
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          gcloud run jobs deploy rera-pipeline --quiet --region "$REGION" \
+            --image "$REGISTRY/rera-pipeline:$SHA" \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
+            --set-cloudsql-instances "${{ vars.GCP_CLOUDSQL_INSTANCE }}" \
+            --set-secrets DATABASE_URL=DATABASE_URL:latest \
+            --task-timeout 6h --max-retries 0

@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+onlyBuiltDependencies:
+  - "@dbmate/linux-x64"
+  - sharp
+  - unrs-resolver

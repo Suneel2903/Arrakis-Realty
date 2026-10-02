@@ -1,0 +1,50 @@
+# Local stack: docker compose up  ->  http://localhost:3000 (health: /api/health)
+# Credentials below are for the local throwaway database only.
+name: arrakis
+
+x-db-url: &db-url postgres://arrakis:${POSTGRES_PASSWORD:-arrakis}@db:5432/arrakis?sslmode=disable
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: arrakis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arrakis}
+      POSTGRES_DB: arrakis
+    ports: ["${DB_PORT:-5432}:5432"]
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arrakis -d arrakis"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    image: amacneil/dbmate:2.36.0
+    command: ["--wait", "--no-dump-schema", "up"]
+    environment:
+      DATABASE_URL: *db-url
+      DBMATE_MIGRATIONS_DIR: /db/migrations
+    volumes: ["./packages/db/migrations:/db/migrations:ro"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    environment:
+      DATABASE_URL: *db-url
+    ports: ["${WEB_PORT:-3000}:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  pipeline:
+    build: services/rera-pipeline
+    profiles: [pipeline]   # docker compose run --rm pipeline <stage>
+    environment:
+      DATABASE_URL: *db-url
+    env_file: [{ path: .env, required: false }]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  db-data:

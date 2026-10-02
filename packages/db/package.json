@@ -1,0 +1,16 @@
+{
+  "name": "@arrakis/db",
+  "private": true,
+  "description": "Postgres 16 + PostGIS migrations (plain SQL, applied with dbmate)",
+  "scripts": {
+    "migrate": "dbmate --migrations-dir migrations --no-dump-schema --wait up",
+    "status": "dbmate --migrations-dir migrations status",
+    "rollback": "dbmate --migrations-dir migrations --no-dump-schema rollback",
+    "new": "dbmate --migrations-dir migrations new",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "dbmate": "2.36.0",
+    "postgres": "^3.4.9"
+  }
+}

@@ -1,0 +1,9 @@
+# Keep LF in the repo and in Windows checkouts (no more CRLF warnings).
+* text=auto eol=lf
+*.docx binary
+*.pptx binary
+*.png binary
+*.ico binary
+*.pmtiles binary
+# Client inputs stay byte-for-byte as delivered.
+reference/** -text

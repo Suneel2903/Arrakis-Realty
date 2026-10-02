@@ -1,5 +1,6 @@
--- Postgres 16 + PostGIS. Map and data-pipeline tables. App tables (users, leads, payments) live in their own migrations.
--- Applied as packages/db/migrations/0001_init.sql. Change the schema with a new migration and update this file to match.
+-- migrate:up
+-- Map and data-pipeline tables (docs/DATA-MODEL.sql). App tables (users, leads,
+-- payments) come in their own migrations.
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 CREATE TABLE rera_project_raw (
@@ -85,3 +86,12 @@ CREATE INDEX ON existing_complex USING gist (point);
 CREATE INDEX ON micro_market USING gist (boundary);
 CREATE INDEX ON project_fact (project_id, field);
 CREATE INDEX ON project (micro_market_id);
+
+-- migrate:down
+DROP TABLE pipeline_run;
+DROP TABLE existing_complex;
+DROP TABLE project_fact;
+DROP TABLE project_location;
+DROP TABLE project;
+DROP TABLE micro_market;
+DROP TABLE rera_project_raw;

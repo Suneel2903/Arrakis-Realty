@@ -7,11 +7,25 @@ Monorepo for the Arrakis Realty platform: public website, mobile-browser custome
 ```
 apps/web/                  Next.js app: public site, customer PWA, /admin
 services/rera-pipeline/    Python: K-RERA fetch → parse → locate → enrich → export
-packages/db/               SQL migrations (Postgres 16 + PostGIS)
+packages/db/               SQL migrations (Postgres 16 + PostGIS), applied with dbmate
+exports/                   Generated data and maps (located CSV, geocode log, refreshed map)
 docs/                      Specs. Read docs/ARCHITECTURE.md first.
 docs/sessions/             One brief per Claude Code cloud session
 reference/                 Client inputs and earlier prototypes (read-only)
 ```
+
+## Run it locally
+
+Needs Node 22 + pnpm 10, Python 3.12 + uv, Docker.
+
+```bash
+docker compose up --build        # Postgres+PostGIS, migrations, web on http://localhost:3000
+pnpm install && pnpm lint && pnpm typecheck && pnpm test
+(cd services/rera-pipeline && uv sync && uv run ruff check . && uv run pytest)
+pnpm db:new <name>               # new migration in packages/db/migrations
+```
+
+Deploying to staging: `docs/DEPLOY.md`.
 
 ## Where to start
 
