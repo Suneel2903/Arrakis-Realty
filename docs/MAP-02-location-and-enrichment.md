@@ -11,6 +11,7 @@
 | 1 | Portal lat/long | high | Validate inside Bengaluru bbox and within 3 km of the PIN centroid |
 | 2 | Portal boundary points → centroid + polygon | high | Reject degenerate polygons (all points equal, area < 200 sq m) |
 | 3 | Name match to OpenStreetMap features (`landuse=residential`, `building=apartments`, `place=neighbourhood` with matching `name`), within the village/PIN area | medium-high | Overpass API extract of Bengaluru, refreshed monthly. ODbL: credit OSM |
+| 3b | Name search on Nominatim, then Photon: `"<name>, <locality>, Bengaluru"`; accept only a name match inside the Bengaluru bbox and within 5 km of the current pin (any distance if unplaced). Methods `nominatim`, `photon` | medium-high | OSM data, storage allowed (ODbL). 1 request/second per service, contact User-Agent, responses cached |
 | 4 | Web lookup: search API query `"<project name>" "<promoter>" Bangalore`; fetch top results that are developer sites or public listings; LLM extracts address, landmark, towers, floors, units, possession; geocode the extracted address | medium | Store every source URL. Use a search API (e.g. Brave Search API or SerpAPI). Do not scrape Google result pages. Do not bulk-crawl property portals; read only the specific pages a search returns |
 | 5 | Geocode RERA address: village + hobli + taluk + PIN via LocationIQ or OpenCage (OSM-based, storage allowed) | low-medium | Survey numbers rarely geocode; village centroid is the usual result |
 | 6 | PIN centroid | low | Shown as an approximate pin only |
@@ -19,6 +20,9 @@ Every method writes `project_location(project_id, lat, lng, polygon, method, con
 
 **Rules**
 - Never use Google Geocoding or Places results as stored map coordinates (terms restrict storage and non-Google-map display). They may be used by a human in QA to sanity-check.
+- **Google Maps candidate finder** (`--gmaps`, see `services/rera-pipeline/README.md`): for projects the OSM steps could not place, a visible browser searches Google Maps one project at a time, 10–20 s apart, and writes the place it finds to `exports/gmaps_candidates.csv` only. These are suggestions for the Location QA queue; they are never written to `project_location`. On a captcha or unusual-traffic page the run stops and saves progress. Google's terms forbid automated use of Maps, so this needs the client's written OK first (docs/DECISIONS.md).
+- Name matching (OSM and geocoders): compare normalised names (drop phase/tower numbering and words like apartments, residency, tower); promoter name breaks ties; two equally good matches more than 300 m apart are rejected as ambiguous; names that are too generic or equal to their locality are not name-matched.
+- `project_location.method` must allow `nominatim` and `photon` (migration in S02; DATA-MODEL.sql currently lists `osm_name` only).
 - Confidence low or medium: the project appears in the admin **Location QA queue**. A data operator confirms or drags the pin; that sets `method=manual`, `confidence=verified`.
 - The UI shows approximate pins with a dashed outline and the note "Approximate location".
 

@@ -6,3 +6,8 @@ node_modules/
 __pycache__/
 .next/
 *.pmtiles
+
+# locate step: HTTP cache and browser profile stay local
+exports/cache/
+exports/.gmaps-profile/
+.venv/

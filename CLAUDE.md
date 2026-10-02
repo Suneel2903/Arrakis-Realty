@@ -16,7 +16,7 @@ A sales platform for Bengaluru homes: buyers explore a 3D map of the city, unloc
 2. Every data row that came from outside carries provenance: `source`, `source_url`, `fetched_at`, `confidence`. No silent facts.
 3. Never invent data. If a field is unknown it stays NULL and the UI shows "Not available".
 4. RERA data is shown as published, credited "Source: Karnataka RERA". Estimates are labelled "estimated" in the UI.
-5. Do not scrape sites whose terms forbid it (property portals, Google Search result pages). Use official APIs or the sources listed in docs/MAP-02.
+5. Do not scrape sites whose terms forbid it (property portals, Google Search result pages). Use official APIs or the sources listed in docs/MAP-02. OpenStreetMap services (Overpass, Nominatim, Photon) are allowed at their published rate limits. Google Maps lookups are allowed only as a slow, logged, one-at-a-time candidate finder for operator review; results are never stored as final coordinates. No captcha solving, no proxy rotation.
 6. Be polite to rera.karnataka.gov.in: max 1 request/second, retries with backoff, identify with a contact User-Agent, run off-peak.
 7. Money, consent, permissions and the 10% pre-agreement rule need tests before merge.
 8. Small PRs: one session = one PR = one module. Update the relevant doc when behaviour changes.
