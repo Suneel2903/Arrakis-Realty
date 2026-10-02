@@ -28,3 +28,6 @@ reference/                 Client inputs and earlier prototypes (read-only)
 | `reference/Arrakis_Realty_Tech_Systems_at_a_Glance.pptx` | Agreed phase plan |
 | `reference/demo-3d-rera-density.html` | Throwaway 3D density demo on real K-RERA data (no basemap) |
 | `reference/demo-prep-script.py` | Script that built the demo data; a starting point only |
+| `reference/bengaluru-rera-map.html` | Real-map demo: OpenStreetMap basemap, 3D ward/village density, exact vs approximate pins (open in Chrome/Edge) |
+| `reference/demo-3d-density-v1.html` | Earlier dark 3D density demo |
+| `reference/blr_rera_projects_located.csv` | 3,459 K-RERA projects; 3,270 placed, with `location_method`, `confidence`, `location_note`. Seed for `project` / `project_location` |
